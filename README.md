@@ -19,10 +19,12 @@ This puts the code in your local Maven repository. Then you can use
 ```
 
 ### Usage:
+This version can only act as a producer, i.e. only as a "to" component. 
+
 ```
 ml:host[:port][/database][?user=...&password=..]
 ```
-The component can be used in the following fashion:
+For example, to read files from inbox and send them to the server into database Documents using the original filename. Files will be added to the collections 'import' and 'camel' :
 ```
 <route>
      <from uri="file:inbox"/>
@@ -35,9 +37,9 @@ The component can be used in the following fashion:
     <to uri="ml:localhost:8000/Documents" />
 </route>
 ```    
-You must supply a host, defaults for other params are: admin/admin, 8000 and Documents. 
 
 ### Notes:
+* You must supply a host, defaults for other params are: admin/admin, 8000 and Documents.
 * The Producer endpoint saves whatever data is in the message body to ML. It can be anything (JSON/XML,binary etc) that the GenericDocumentManager understands. 
 * Data without a ml_docId header will get named after the Camel Message Id eg ID-MacPro-2708-58220-1452764057613-0-1
 * You can use header ml_docCollection to set one or more collections.
