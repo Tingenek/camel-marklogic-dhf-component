@@ -2,7 +2,8 @@ Camel MarkLogic Component
 ==========================
 A component wrapping a small part of the MarkLogic 3.0 Java API
 Definitely a work in progress!
-```2016 MLawson (@tingenek) for llamas everywhere.```
+
+2016 MLawson (@tingenek).
 
 ### Build Instructions:
 
