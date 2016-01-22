@@ -49,6 +49,8 @@ public class MLEndpoint extends DefaultEndpoint {
 	private String user ="admin";
 	@UriParam(label = "password", defaultValue = "admin")
 	private String password ="admin";
+	@UriParam(label = "query")
+	private String query;
 	
 	/*Database handle */
 	private DatabaseClient client;
@@ -82,7 +84,11 @@ public class MLEndpoint extends DefaultEndpoint {
 
     @Override
     public Consumer createConsumer(Processor processor) throws Exception {
-    	  return new MLConsumer(this,processor);
+    	MLConsumer consumer = new MLConsumer(this,processor);
+        // ScheduledPollConsumer default delay is 500 millis and that is too often for polling a feed, so we override
+        // with a new default value. End user can override this value by providing a consumer.delay parameter
+    	consumer.setDelay(MLConsumer.DEFAULT_CONSUMER_DELAY);
+    	return consumer;
     }
 	
 
@@ -148,6 +154,16 @@ public class MLEndpoint extends DefaultEndpoint {
 	public void setDatabase(String database) {
 		this.database= database;
 	}
+
+	//Query
+		public String getQuery() {
+			return this.query;
+		}
+
+		public void setQuery(String query) {
+			this.query= query;
+		}
+	
 	
 	// Connection
 	public DatabaseClient getClient() {
