@@ -7,8 +7,10 @@ import com.marklogic.client.io.InputStreamHandle;
 import com.marklogic.client.DatabaseClientFactory.Authentication;
 import com.marklogic.client.document.GenericDocumentManager;
 import com.marklogic.client.io.DocumentMetadataHandle;
+import com.marklogic.client.document.DocumentWriteSet;
 import com.marklogic.client.io.DOMHandle;
 import java.io.InputStream;
+import java.util.List;
 
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
@@ -39,9 +41,48 @@ public class MLProducer extends DefaultProducer {
 	
 	@Override
     public void process(Exchange exchange) throws Exception {
-		DocumentMetadataHandle metadata = new DocumentMetadataHandle();
-		Message message = exchange.getIn();
+		if (exchange.getProperty(Exchange.AGGREGATED_SIZE, Integer.class) != null) {
+			LOG.info("This exchange is an Aggregation");
+			batchProcess(exchange);
+		} else	{
+		    LOG.info("This exchange is a single");
+		    singleProcess(exchange);
+		}      
+    }
 	
+	//Process a batch Body
+	private void batchProcess(Exchange exchange) throws Exception {
+		DocumentMetadataHandle metadata = new DocumentMetadataHandle();
+		List<Exchange> list = exchange.getIn().getBody(List.class);
+		Message message = null;
+		String docId = null;
+		String docCollection = null;
+       	GenericDocumentManager docMgr = endpoint.getClient().newDocumentManager();
+		DocumentWriteSet batch = docMgr.newWriteSet();
+		batch.addDefault(metadata);
+		for (Exchange item : list) {
+			message = item.getIn();
+			docId = message.getHeader("ml_docId", String.class);
+			if (docId == null) docId = message.getMessageId();
+			batch.add(docId, new InputStreamHandle(message.getBody(InputStream.class)));
+		}
+       //We don't know if we've got a good connection with ML until we try and use it!
+        try {
+ 			docMgr.write(batch);
+		} catch (Exception e) {
+			LOG.error("Error writing message " + docId +" to MarkLogic.");		
+			exchange.setException(e);
+			//You can't throw here. You could kill the whole context but it's bad practice. 
+			//exchange.getContext().stop();
+			//Better to use a RoutePolicy :-)
+		} 
+		
+	}
+	
+	//Process a single Body
+	private void singleProcess(Exchange exchange) throws Exception {
+		Message message = exchange.getIn();	
+		DocumentMetadataHandle metadata = new DocumentMetadataHandle();
 		String docId = message.getHeader("ml_docId", String.class);
 		String docCollection = message.getHeader("ml_docCollection", String.class);
 		
@@ -61,10 +102,12 @@ public class MLProducer extends DefaultProducer {
 			//You can't throw here. You could kill the whole context but it's bad practice. 
 			//exchange.getContext().stop();
 			//Better to use a RoutePolicy :-)
-		}                 
-              
-        
-    }
+		} 
+		
+	}
+	
+	
+	
 	
 	/* Get Doc metadata as XML */
 	private String getMetaData(String docId, GenericDocumentManager docMgr) throws Exception {        
