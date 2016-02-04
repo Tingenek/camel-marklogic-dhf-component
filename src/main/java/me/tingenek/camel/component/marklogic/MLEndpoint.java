@@ -14,8 +14,7 @@ import org.apache.camel.spi.UriEndpoint;
 import org.apache.camel.spi.UriParam;
 import org.apache.camel.spi.UriPath;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Logger;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -30,7 +29,7 @@ import java.net.URISyntaxException;
  */
 @UriEndpoint(scheme = "ml", syntax = "ml:host:port/[database]?user?password")
 public class MLEndpoint extends DefaultEndpoint {
-	private static final transient Log LOG = LogFactory.getLog(MLEndpoint.class);
+	private static final transient Logger LOG = Logger.getLogger(MLEndpoint.class);
 
 	private static final String DEFAULT_DATABASE = "Documents";
     private static final int DEFAULT_PORT = 8000;

@@ -7,8 +7,7 @@ import org.apache.camel.Route;
 import org.apache.camel.support.RoutePolicySupport;
 import org.apache.camel.util.ObjectHelper;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Logger;
 
 import java.lang.Exception;
 
@@ -22,7 +21,7 @@ import java.lang.Exception;
 
 
 public class MLRoutePolicy extends RoutePolicySupport {
-private static final transient Log LOG = LogFactory.getLog(MLRoutePolicy.class);
+private static final transient Logger LOG = Logger.getLogger(MLRoutePolicy.class);
 
   @Override
   public void onExchangeDone(Route route, Exchange exchange) {

@@ -20,10 +20,11 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Message;
 import org.apache.camel.impl.DefaultProducer;
 import org.apache.camel.util.ExchangeHelper;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.CamelExchangeException;
+
+import org.apache.log4j.Logger;
+
 
 /**
  * ML Producer provides a channel on which clients can create and invoke message exchanges
@@ -35,7 +36,7 @@ import org.apache.camel.CamelExchangeException;
  *         
  */
 public class MLProducer extends DefaultProducer {
-	private static final transient Log LOG = LogFactory.getLog(MLProducer.class);
+	private static final transient Logger LOG = Logger.getLogger(MLProducer.class);
     private MLEndpoint endpoint;
 	
 	public MLProducer(MLEndpoint endpoint) {
@@ -45,12 +46,13 @@ public class MLProducer extends DefaultProducer {
 	
 	@Override
     public void process(Exchange exchange) throws Exception {
-		if (exchange.getProperty(Exchange.AGGREGATED_SIZE, Integer.class) != null) {
-			LOG.info("This exchange is an Aggregation");
+		Integer batchSize = exchange.getProperty(Exchange.AGGREGATED_SIZE, Integer.class);
+		
+		if (batchSize > 0) {
+			LOG.info("Sending Batch of " + batchSize);
 			batchProcess(exchange);
-		} else	{
-		    LOG.info("This exchange is a single");
-		    singleProcess(exchange);
+		} else if (batchSize == null) {
+			singleProcess(exchange);
 		}      
     }
 	

@@ -13,8 +13,7 @@ import com.marklogic.client.io.SearchHandle;
 import com.marklogic.client.io.StringHandle;
 import com.marklogic.client.query.MatchDocumentSummary;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.apache.log4j.Logger;
 
 import java.util.ArrayList;
 
@@ -23,7 +22,7 @@ import java.util.ArrayList;
  */
 public class MLConsumer extends ScheduledPollConsumer {
     public static final long DEFAULT_CONSUMER_DELAY = 5 * 60 * 1000L;
-	private static final transient Log LOG = LogFactory.getLog(MLConsumer.class);
+	private static final transient Logger LOG = Logger.getLogger(MLConsumer.class);
     private QueryManager queryMgr;
     
 
