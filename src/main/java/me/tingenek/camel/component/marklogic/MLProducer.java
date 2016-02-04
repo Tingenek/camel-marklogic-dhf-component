@@ -4,6 +4,7 @@ import com.marklogic.client.DatabaseClient;
 import com.marklogic.client.DatabaseClientFactory;
 import com.marklogic.client.document.DocumentDescriptor;
 import com.marklogic.client.io.InputStreamHandle;
+import com.marklogic.client.io.StringHandle;
 import com.marklogic.client.DatabaseClientFactory.Authentication;
 import com.marklogic.client.document.GenericDocumentManager;
 import com.marklogic.client.io.DocumentMetadataHandle;
@@ -11,6 +12,8 @@ import com.marklogic.client.document.DocumentWriteSet;
 import com.marklogic.client.io.DOMHandle;
 import java.io.InputStream;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.UUID;
 
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
@@ -20,6 +23,7 @@ import org.apache.camel.util.ExchangeHelper;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.camel.RuntimeCamelException;
+import org.apache.camel.CamelExchangeException;
 
 /**
  * ML Producer provides a channel on which clients can create and invoke message exchanges
@@ -52,25 +56,31 @@ public class MLProducer extends DefaultProducer {
 	
 	//Process a batch Body
 	private void batchProcess(Exchange exchange) throws Exception {
+		Message message = exchange.getIn();
 		DocumentMetadataHandle metadata = new DocumentMetadataHandle();
-		List<Exchange> list = exchange.getIn().getBody(List.class);
-		Message message = null;
+
+		//List list = message.getBody(List.class);
+		LOG.debug("Processing " + message.getBody(String.class));
+		List<Message> list =  message.getBody(List.class);		
+			
 		String docId = null;
 		String docCollection = null;
        	GenericDocumentManager docMgr = endpoint.getClient().newDocumentManager();
-		DocumentWriteSet batch = docMgr.newWriteSet();
+       	DocumentWriteSet batch = docMgr.newWriteSet();
 		batch.addDefault(metadata);
-		for (Exchange item : list) {
-			message = item.getIn();
-			docId = message.getHeader("ml_docId", String.class);
-			if (docId == null) docId = message.getMessageId();
-			batch.add(docId, new InputStreamHandle(message.getBody(InputStream.class)));
+
+		for (Message msg : list) {
+			docId = msg.getHeader("ml_docId", String.class);
+			if (docId == null) docId = UUID.randomUUID().toString();
+
+			LOG.debug("Adding " + docId + " as " + msg.getBody().getClass());
+			batch.add(docId, new StringHandle(msg.getBody(String.class)));
 		}
        //We don't know if we've got a good connection with ML until we try and use it!
         try {
  			docMgr.write(batch);
 		} catch (Exception e) {
-			LOG.error("Error writing message " + docId +" to MarkLogic.");		
+			LOG.error("Error writing message " + docId +" to MarkLogic." + e.getMessage());		
 			exchange.setException(e);
 			//You can't throw here. You could kill the whole context but it's bad practice. 
 			//exchange.getContext().stop();
