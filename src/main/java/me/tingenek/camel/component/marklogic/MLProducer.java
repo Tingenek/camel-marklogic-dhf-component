@@ -7,6 +7,7 @@ import com.marklogic.client.io.InputStreamHandle;
 import com.marklogic.client.io.StringHandle;
 import com.marklogic.client.DatabaseClientFactory.Authentication;
 import com.marklogic.client.document.GenericDocumentManager;
+import com.marklogic.client.document.DocumentManager;
 import com.marklogic.client.io.DocumentMetadataHandle;
 import com.marklogic.client.document.DocumentWriteSet;
 import com.marklogic.client.io.DOMHandle;
@@ -22,6 +23,8 @@ import org.apache.camel.impl.DefaultProducer;
 import org.apache.camel.util.ExchangeHelper;
 import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.CamelExchangeException;
+import org.apache.camel.util.MessageHelper;
+import org.apache.camel.component.file.GenericFile;
 
 import org.apache.log4j.Logger;
 
@@ -47,8 +50,9 @@ public class MLProducer extends DefaultProducer {
 	@Override
     public void process(Exchange exchange) throws Exception {
 		Integer batchSize = exchange.getProperty(Exchange.AGGREGATED_SIZE, Integer.class);
+	    
 		
-		if (batchSize > 0) {
+		if (batchSize != null && batchSize > 0) {
 			LOG.info("Sending Batch of " + batchSize);
 			batchProcess(exchange);
 		} else if (batchSize == null) {
@@ -61,7 +65,6 @@ public class MLProducer extends DefaultProducer {
 		Message message = exchange.getIn();
 		DocumentMetadataHandle metadata = new DocumentMetadataHandle();
 
-		//List list = message.getBody(List.class);
 		LOG.debug("Processing " + message.getBody(String.class));
 		List<Message> list =  message.getBody(List.class);		
 			
@@ -70,7 +73,7 @@ public class MLProducer extends DefaultProducer {
        	GenericDocumentManager docMgr = endpoint.getClient().newDocumentManager();
        	DocumentWriteSet batch = docMgr.newWriteSet();
 		batch.addDefault(metadata);
-
+		
 		for (Message msg : list) {
 			docId = msg.getHeader("ml_docId", String.class);
 			if (docId == null) docId = UUID.randomUUID().toString();
@@ -97,19 +100,30 @@ public class MLProducer extends DefaultProducer {
 		DocumentMetadataHandle metadata = new DocumentMetadataHandle();
 		String docId = message.getHeader("ml_docId", String.class);
 		String docCollection = message.getHeader("ml_docCollection", String.class);
-		
-		// If null use message Id
-		if (docId == null) docId = message.getMessageId();
-		// If collection(s) add 
-		if (docCollection != null) metadata.getCollections().addAll(docCollection.split(","));
+		String fileName =  message.getHeader("CamelFileNameOnly", String.class);
+	    InputStreamHandle handle = new InputStreamHandle();
+		DatabaseClient client = endpoint.getClient();
+       	GenericDocumentManager docMgr = client.newDocumentManager();
 
-        //We don't know if we've got a good connection with ML until we try and use it!
-        try {
-        	GenericDocumentManager docMgr = endpoint.getClient().newDocumentManager();
- 			InputStreamHandle handle = new InputStreamHandle(message.getBody(InputStream.class));
-			docMgr.write(docId,metadata,handle);
+       	// If collection(s) add 
+		if (docCollection != null) metadata.getCollections().addAll(docCollection.split(","));
+		
+       	//Check the body isn't a stream, else assume convertable to byte[]
+		if (message.getBody() instanceof GenericFile) {
+			handle.set(message.getBody(InputStream.class));
+			// If we've a filename, we need that for ML to infer type
+			if (docId == null) docId = fileName;		
+		} else {
+			//Try to get body as byte array
+			handle.fromBuffer(message.getBody(byte[].class));
+		}	
+	       //We don't know if we've got a good connection with ML until we try and use it!
+        try { 
+        	//no docId - so set to random uuid
+        	if (docId == null) docId = UUID.randomUUID().toString();
+        	docMgr.write(docId,metadata,handle);
 		} catch (Exception e) {
-			LOG.error("Error writing message " + docId +" to MarkLogic.");		
+			LOG.error("Error writing message " + docId +" :" + e.getMessage());		
 			exchange.setException(e);
 			//You can't throw here. You could kill the whole context but it's bad practice. 
 			//exchange.getContext().stop();
