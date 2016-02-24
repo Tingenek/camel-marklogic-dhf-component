@@ -8,6 +8,8 @@ import com.marklogic.client.io.StringHandle;
 import com.marklogic.client.DatabaseClientFactory.Authentication;
 import com.marklogic.client.document.GenericDocumentManager;
 import com.marklogic.client.document.DocumentManager;
+import com.marklogic.client.eval.ServerEvaluationCall;
+import com.marklogic.client.eval.EvalResultIterator;
 import com.marklogic.client.io.DocumentMetadataHandle;
 import com.marklogic.client.document.DocumentWriteSet;
 import com.marklogic.client.io.DOMHandle;
@@ -50,15 +52,19 @@ public class MLProducer extends DefaultProducer {
 	@Override
     public void process(Exchange exchange) throws Exception {
 		Integer batchSize = exchange.getProperty(Exchange.AGGREGATED_SIZE, Integer.class);
-	    
-		
+	    String cmdMode = endpoint.getMode();
 		if (batchSize != null && batchSize > 0) {
 			LOG.info("Sending Batch of " + batchSize);
 			batchProcess(exchange);
 		} else if (batchSize == null) {
-			singleProcess(exchange);
-		}      
-    }
+			if (cmdMode.equals("run") ) {
+				 LOG.info("Executing message body");
+				execProcess(exchange);
+			} else {
+				singleProcess(exchange);
+			}  
+		}
+	}	
 	
 	//Process a batch Body
 	private void batchProcess(Exchange exchange) throws Exception {
@@ -132,8 +138,35 @@ public class MLProducer extends DefaultProducer {
 		
 	}
 	
-	
-	
+	/* Exec the body if it's JS or XQuery */
+	private void execProcess(Exchange exchange) throws Exception {
+		Message message = exchange.getIn();	
+		//Treat message as a string
+		String body = message.getBody(String.class);
+		DatabaseClient client = endpoint.getClient();
+		ServerEvaluationCall call = client.newServerEval();
+		//String response = "";
+		List response = new ArrayList();
+		EvalResultIterator result = null;
+		
+		try {
+			call.xquery(body);
+			result = call.eval();
+			//response = call.evalAs(String.class);
+			 //message.setBody(response);
+			while (result.hasNext()){
+			    response.add(result.next().getString());
+			}
+			
+			message.setBody(response);
+		} catch (Exception e) {
+			LOG.error("Error running script: " + e.getMessage());		
+			exchange.setException(e);
+		} finally { 
+			result.close(); 
+		}
+	}
+		
 	
 	/* Get Doc metadata as XML */
 	private String getMetaData(String docId, GenericDocumentManager docMgr) throws Exception {        

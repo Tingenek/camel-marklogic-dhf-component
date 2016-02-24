@@ -48,8 +48,11 @@ public class MLEndpoint extends DefaultEndpoint {
 	private String user ="admin";
 	@UriParam(label = "password", defaultValue = "admin")
 	private String password ="admin";
+	//Query for test producer - may be temporary
 	@UriParam(label = "query")
 	private String query;
+	@UriParam(label = "mode", defaultValue = "write")
+	private String mode ="write";
 	
 	/*Database handle */
 	private DatabaseClient client;
@@ -162,7 +165,14 @@ public class MLEndpoint extends DefaultEndpoint {
 		public void setQuery(String query) {
 			this.query= query;
 		}
-	
+	//Mode
+		public String getMode() {
+			return this.mode;
+		}
+
+		public void setMode(String mode) {
+			this.mode= mode;
+		}
 	
 	// Connection
 	public DatabaseClient getClient() {
