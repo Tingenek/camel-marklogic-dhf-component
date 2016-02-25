@@ -150,20 +150,24 @@ public class MLProducer extends DefaultProducer {
 		EvalResultIterator result = null;
 		
 		try {
-			call.xquery(body);
+			if (isXQuery(body)) { 
+				call.xquery(body);
+			} else {
+				call.javascript(body);	
+			}
 			result = call.eval();
 			//response = call.evalAs(String.class);
 			 //message.setBody(response);
+			//Iterator in a List
 			while (result.hasNext()){
-			    response.add(result.next().getString());
-			}
-			
+			    response.add(result.next());
+			}		
 			message.setBody(response);
 		} catch (Exception e) {
 			LOG.error("Error running script: " + e.getMessage());		
 			exchange.setException(e);
 		} finally { 
-			result.close(); 
+			if (result != null) result.close(); 
 		}
 	}
 		
@@ -179,4 +183,12 @@ public class MLProducer extends DefaultProducer {
 		return readMetadataHandle.toString();	
 	}
 		
+	/* Look for XQuery Token */
+	private boolean isXQuery (String bodyStr) {
+		int length = bodyStr.length() < 30 ? bodyStr.length() : 30;
+
+		String test = bodyStr.substring(0,length).toLowerCase();
+		return test.contains("xquery");
+	}
+	
 }
