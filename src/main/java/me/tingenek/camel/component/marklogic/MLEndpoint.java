@@ -27,7 +27,7 @@ import java.net.URISyntaxException;
  * @author Mark Lawson (tingenek) For llamas everywhere.
  *         
  */
-@UriEndpoint(scheme = "ml", syntax = "ml:host:port/[database]?user?password")
+@UriEndpoint(scheme = "ml", syntax = "ml:host:port/[database]?user?password", title = "ml endpoint")
 public class MLEndpoint extends DefaultEndpoint {
 	private static final transient Logger LOG = Logger.getLogger(MLEndpoint.class);
 
