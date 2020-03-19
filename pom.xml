@@ -23,10 +23,10 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>me.tingenek.camel</groupId>
-  <artifactId>camel.ml.component</artifactId>
+  <artifactId>camel.dhf.component</artifactId>
   <packaging>jar</packaging>
   <version>1.0-SNAPSHOT</version>
-  <name>MarkLogic :: Camel MarkLogic Component</name>
+  <name>MarkLogic :: Camel MarkLogic DHF Component</name>
   <url>http://www.marklogic.com</url>
 
   <repositories>
@@ -35,10 +35,32 @@
     <name>MarkLogic Releases</name>
     <url>http://developer.marklogic.com/maven2</url>
   </repository>
+  
+ 
+  <repository>
+    <id>spring-repo</id>
+    <name>Spring Repository</name>
+    <url>https://repo.spring.io/plugins-release</url>
+</repository>
+  
+   
   </repositories>
   
   <dependencies>
  
+   <!-- https://mvnrepository.com/artifact/com.marklogic/marklogic-data-hub -->
+	<dependency>
+    	<groupId>com.marklogic</groupId>
+    	<artifactId>marklogic-data-hub</artifactId>
+    	<version>5.2.0</version>
+	</dependency>
+
+	<dependency>
+    	<groupId>com.marklogic</groupId>
+   	 	<artifactId>ml-app-deployer</artifactId>
+    	<version>3.6.3</version>
+	</dependency>
+  
     <dependency>
       <groupId>org.apache.camel</groupId>
       <artifactId>camel-core</artifactId>
@@ -50,19 +72,14 @@
       <artifactId>camel-spring</artifactId>
 	  <version>2.24.2</version>
    </dependency>    
-    
-  <dependency>
-    <groupId>com.marklogic</groupId>
-    <artifactId>java-client-api</artifactId>
-    <version>4.0.1</version>
-  </dependency>
-   
-   
+         
+     
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
 	  <version>1.2.17</version>
     </dependency>
+    
   
  </dependencies>
 

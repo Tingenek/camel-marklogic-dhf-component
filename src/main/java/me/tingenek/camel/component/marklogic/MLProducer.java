@@ -1,18 +1,10 @@
 package me.tingenek.camel.component.marklogic;
 
-import com.marklogic.client.DatabaseClient;
-import com.marklogic.client.DatabaseClientFactory;
-import com.marklogic.client.document.DocumentDescriptor;
-import com.marklogic.client.io.InputStreamHandle;
-import com.marklogic.client.io.StringHandle;
-import com.marklogic.client.DatabaseClientFactory.Authentication;
-import com.marklogic.client.document.GenericDocumentManager;
-import com.marklogic.client.document.DocumentManager;
-import com.marklogic.client.eval.ServerEvaluationCall;
-import com.marklogic.client.eval.EvalResultIterator;
-import com.marklogic.client.io.DocumentMetadataHandle;
-import com.marklogic.client.document.DocumentWriteSet;
-import com.marklogic.client.io.DOMHandle;
+import com.marklogic.hub.flow.FlowInputs;
+import com.marklogic.hub.flow.FlowRunner;
+import com.marklogic.hub.flow.RunFlowResponse;
+import com.marklogic.hub.flow.impl.FlowRunnerImpl;
+
 import java.io.InputStream;
 import java.util.List;
 import java.util.ArrayList;
@@ -51,85 +43,30 @@ public class MLProducer extends DefaultProducer {
 	
 	@Override
     public void process(Exchange exchange) throws Exception {
-		Integer batchSize = exchange.getProperty(Exchange.AGGREGATED_SIZE, Integer.class);
-	    String cmdMode = endpoint.getMode();
-		if (batchSize != null && batchSize > 0) {
-			LOG.info("Sending Batch of " + batchSize);
-			batchProcess(exchange);
-		} else if (batchSize == null) {
-			if (cmdMode.equals("run") ) {
-				 LOG.info("Executing message body");
-				execProcess(exchange);
-			} else {
-				singleProcess(exchange);
-			}  
-		}
-	}	
-	
-	//Process a batch Body
-	private void batchProcess(Exchange exchange) throws Exception {
-		Message message = exchange.getIn();
-		DocumentMetadataHandle metadata = new DocumentMetadataHandle();
-
-		LOG.debug("Processing " + message.getBody(String.class));
-		List<Message> list =  message.getBody(List.class);		
-			
-		String docId = null;
-		String docCollection = null;
-       	GenericDocumentManager docMgr = endpoint.getClient().newDocumentManager();
-       	DocumentWriteSet batch = docMgr.newWriteSet();
-		batch.addDefault(metadata);
-		
-		for (Message msg : list) {
-			docId = msg.getHeader("ml_docId", String.class);
-			if (docId == null) docId = UUID.randomUUID().toString();
-
-			LOG.debug("Adding " + docId + " as " + msg.getBody().getClass());
-			batch.add(docId, new StringHandle(msg.getBody(String.class)));
-		}
-       //We don't know if we've got a good connection with ML until we try and use it!
-        try {
- 			docMgr.write(batch);
-		} catch (Exception e) {
-			LOG.error("Error writing message " + docId +" to MarkLogic." + e.getMessage());		
-			exchange.setException(e);
-			//You can't throw here. You could kill the whole context but it's bad practice. 
-			//exchange.getContext().stop();
-			//Better to use a RoutePolicy :-)
-		} 
-		
-	}
-	
-	//Process a single Body
-	private void singleProcess(Exchange exchange) throws Exception {
+	    String user = endpoint.getUser();
+	    String password = endpoint.getPassword();	    
+	    String host = endpoint.getHost();		    
+	    LOG.info("user " + user);       
+	    LOG.info("password " + password);    
 		Message message = exchange.getIn();	
-		DocumentMetadataHandle metadata = new DocumentMetadataHandle();
-		String docId = message.getHeader("ml_docId", String.class);
-		String docCollection = message.getHeader("ml_docCollection", String.class);
-		String fileName =  message.getHeader("CamelFileNameOnly", String.class);
-	    InputStreamHandle handle = new InputStreamHandle();
-		DatabaseClient client = endpoint.getClient();
-       	GenericDocumentManager docMgr = client.newDocumentManager();
-
-       	// If collection(s) add 
-		if (docCollection != null) metadata.getCollections().addAll(docCollection.split(","));
+		String flowName = message.getHeader("ml_flowname", String.class);
+		// If collection(s) add 
+		//if (docCollection != null) metadata.getCollections().addAll(docCollection.split(","));
 		
-       	//Check the body isn't a stream, else assume convertable to byte[]
-		if (message.getBody() instanceof GenericFile) {
-			handle.set(message.getBody(InputStream.class));
-			// If we've a filename, we need that for ML to infer type
-			if (docId == null) docId = fileName;		
-		} else {
-			//Try to get body as byte array
-			handle.fromBuffer(message.getBody(byte[].class));
-		}	
-	       //We don't know if we've got a good connection with ML until we try and use it!
         try { 
-        	//no docId - so set to random uuid
-        	if (docId == null) docId = UUID.randomUUID().toString();
-        	docMgr.write(docId,metadata,handle);
+        	
+        	//no docId - so set to random uuid           
+    	    FlowRunner flowRunner = new FlowRunnerImpl(host, user, password);
+            FlowInputs inputs = new FlowInputs(flowName);
+	        // This is needed so that an absolute file path is used
+	        inputs.setOptions(message.getHeaders());
+	        RunFlowResponse response = flowRunner.runFlow(inputs);
+	        flowRunner.awaitCompletion();
+	        exchange.getIn().setBody(response);
+	        
+
 		} catch (Exception e) {
-			LOG.error("Error writing message " + docId +" :" + e.getMessage());		
+			LOG.error("Error writing message " + flowName +" :" + e.getMessage());		
 			exchange.setException(e);
 			//You can't throw here. You could kill the whole context but it's bad practice. 
 			//exchange.getContext().stop();
@@ -138,57 +75,5 @@ public class MLProducer extends DefaultProducer {
 		
 	}
 	
-	/* Exec the body if it's JS or XQuery */
-	private void execProcess(Exchange exchange) throws Exception {
-		Message message = exchange.getIn();	
-		//Treat message as a string
-		String body = message.getBody(String.class);
-		DatabaseClient client = endpoint.getClient();
-		ServerEvaluationCall call = client.newServerEval();
-		//String response = "";
-		List response = new ArrayList();
-		EvalResultIterator result = null;
-		
-		try {
-			if (isXQuery(body)) { 
-				call.xquery(body);
-			} else {
-				call.javascript(body);	
-			}
-			result = call.eval();
-			//response = call.evalAs(String.class);
-			 //message.setBody(response);
-			//Iterator in a List
-			while (result.hasNext()){
-			    response.add(result.next());
-			}		
-			message.setBody(response);
-		} catch (Exception e) {
-			LOG.error("Error running script: " + e.getMessage());		
-			exchange.setException(e);
-		} finally { 
-			if (result != null) result.close(); 
-		}
-	}
-		
-	
-	/* Get Doc metadata as XML */
-	private String getMetaData(String docId, GenericDocumentManager docMgr) throws Exception {        
-		DOMHandle readMetadataHandle = new DOMHandle();
-		try {
-			docMgr.readMetadata(docId, readMetadataHandle);				
-		} catch (Exception e) {
-			LOG.error("Error reading metadata for  " + docId);		
-		}
-		return readMetadataHandle.toString();	
-	}
-		
-	/* Look for XQuery Token */
-	private boolean isXQuery (String bodyStr) {
-		int length = bodyStr.length() < 30 ? bodyStr.length() : 30;
-
-		String test = bodyStr.substring(0,length).toLowerCase();
-		return test.contains("xquery");
-	}
 	
 }

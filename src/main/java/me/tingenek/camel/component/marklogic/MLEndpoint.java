@@ -1,9 +1,7 @@
-package me.tingenek.camel.component.marklogic;;
+package me.tingenek.camel.component.marklogic;
 
 import org.apache.camel.impl.DefaultEndpoint;
 
-import com.marklogic.client.DatabaseClient;
-import com.marklogic.client.DatabaseClientFactory;
 import org.apache.camel.Consumer;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
@@ -27,36 +25,22 @@ import java.net.URISyntaxException;
  * @author Mark Lawson (tingenek) For llamas everywhere.
  *         
  */
-@UriEndpoint(scheme = "ml", syntax = "ml:host:port/[database]?user?password", title = "ml endpoint")
+@UriEndpoint(scheme = "dhf", syntax = "dhf:host/runflow?user?password", title = "dhf flowrunner endpoint")
 public class MLEndpoint extends DefaultEndpoint {
 	private static final transient Logger LOG = Logger.getLogger(MLEndpoint.class);
 
-	private static final String DEFAULT_DATABASE = "Documents";
-    private static final int DEFAULT_PORT = 8000;
-	private static final String URI_ERROR = "Invalid URI. Format must be of the form ml:host[:port]/[database]?user?password...";
+	private static final String URI_ERROR = "Invalid URI. Format must be of the form ml:host/runflow?user?password...";
 
     
 	/* Params */
 	@UriPath(label="host") @Metadata(required = "true")
-	private String host;
-	@UriPath(label="port", defaultValue = "" + DEFAULT_PORT) 
-	private int port;	
-	@UriPath(label="database", defaultValue = DEFAULT_DATABASE)
-
-	private String database;
+	private String host;	
 	@UriParam(label = "user", defaultValue = "admin")
 	private String user ="admin";
 	@UriParam(label = "password", defaultValue = "admin")
 	private String password ="admin";
-	//Query for test producer - may be temporary
-	@UriParam(label = "query")
-	private String query;
-	@UriParam(label = "mode", defaultValue = "write")
-	private String mode ="write";
-	
-	/*Database handle */
-	private DatabaseClient client;
-	
+		
+
 	public MLEndpoint(String endpointUri, MLComponent component) throws URISyntaxException  {
 		super(endpointUri, component);
 	    URI uri = new URI(endpointUri);
@@ -66,10 +50,6 @@ public class MLEndpoint extends DefaultEndpoint {
 	    if (host == null) {
 	    	throw new IllegalArgumentException(URI_ERROR);
 	    }
-
-	    port = uri.getPort() == -1 ? DEFAULT_PORT : uri.getPort();
-
-	    database = uri.getPath() == null || uri.getPath().trim().length() == 0 ? DEFAULT_DATABASE : uri.getPath().substring(1);
 	    
 	    //LOG.info("Connecting to ML using params:" + host + ":" + port + ":" + database);
 	}
@@ -84,34 +64,17 @@ public class MLEndpoint extends DefaultEndpoint {
        return new MLProducer(this);
     }
 
-    @Override
-    public Consumer createConsumer(Processor processor) throws Exception {
-    	MLConsumer consumer = new MLConsumer(this,processor);
-        // ScheduledPollConsumer default delay is 500 millis and that is too often for polling a feed, so we override
-        // with a new default value. End user can override this value by providing a consumer.delay parameter
-    	consumer.setDelay(MLConsumer.DEFAULT_CONSUMER_DELAY);
-    	return consumer;
-    }
-	
 
+	@Override
+	 public Consumer createConsumer(final Processor processor) throws Exception {
+         throw new UnsupportedOperationException();
+     }
+	
+	
 	public boolean isSingleton() {
 		return true;
 	}
-	
-	  @Override
-	public void doStart() throws Exception {
-	        super.doStart();
-	    	client = DatabaseClientFactory.newClient(host, port,user,password,DatabaseClientFactory.Authentication.DIGEST);
-	  }
-		
-	@Override
-    protected void doStop() throws Exception {
-		if (client != null) {
-			client.release();
-		}
-        super.doStop();
-    }
-
+			
 
 	//Host
 	public String getHost() {
@@ -122,14 +85,6 @@ public class MLEndpoint extends DefaultEndpoint {
 		this.host= host;
 	}
 
-	//Port
-	public int getPort() {
-		return port;
-	}
-
-	public void setPort(int port) {
-		this.port= port;
-	}
 
 	//User
 	public String getUser() {
@@ -147,36 +102,6 @@ public class MLEndpoint extends DefaultEndpoint {
 
 	public void setPassword(String password) {
 		this.password= password;
-	}
-	//Database
-	public String getDatabase() {
-		return this.database;
-	}
-
-	public void setDatabase(String database) {
-		this.database= database;
-	}
-
-	//Query
-		public String getQuery() {
-			return this.query;
-		}
-
-		public void setQuery(String query) {
-			this.query= query;
-		}
-	//Mode
-		public String getMode() {
-			return this.mode;
-		}
-
-		public void setMode(String mode) {
-			this.mode= mode;
-		}
-	
-	// Connection
-	public DatabaseClient getClient() {
-		return this.client;
 	}
 	
 }
