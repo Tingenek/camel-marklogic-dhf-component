@@ -21,6 +21,7 @@ import org.apache.camel.util.MessageHelper;
 import org.apache.camel.component.file.GenericFile;
 
 import org.apache.log4j.Logger;
+import java.util.Arrays;
 
 
 /**
@@ -46,24 +47,24 @@ public class MLProducer extends DefaultProducer {
 	    String user = endpoint.getUser();
 	    String password = endpoint.getPassword();	    
 	    String host = endpoint.getHost();		    
-	    LOG.info("user " + user);       
-	    LOG.info("password " + password);    
+	    
 		Message message = exchange.getIn();	
-		String flowName = message.getHeader("ml_flowname", String.class);
-		// If collection(s) add 
-		//if (docCollection != null) metadata.getCollections().addAll(docCollection.split(","));
-		
-        try { 
-        	
-        	//no docId - so set to random uuid           
-    	    FlowRunner flowRunner = new FlowRunnerImpl(host, user, password);
+		String flowName = message.getHeader("dhf_flowname", String.class);		
+		String steps =  message.getHeader("dhf_steps", String.class);
+								
+	      try { 
+        	FlowRunner flowRunner = new FlowRunnerImpl(host, user, password);
             FlowInputs inputs = new FlowInputs(flowName);
-	        // This is needed so that an absolute file path is used
+            //Set Options to current headers 
 	        inputs.setOptions(message.getHeaders());
+	        //If we defined steps then set them too
+			if (steps != null) inputs.setSteps(Arrays.asList(steps.split(","))); 
+        	//Run the flow and wait        
 	        RunFlowResponse response = flowRunner.runFlow(inputs);
 	        flowRunner.awaitCompletion();
+	        //Set the message body to the JSON return
 	        exchange.getIn().setBody(response);
-	        
+
 
 		} catch (Exception e) {
 			LOG.error("Error writing message " + flowName +" :" + e.getMessage());		
