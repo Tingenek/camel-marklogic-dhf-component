@@ -24,7 +24,7 @@ This version can only act as a producer, i.e. only as a "to" component.
 ```
 ml:host/runflow[?user=...&password=..]
 ```
-For example, to read files from inbox and send them to the server into database Documents using the original filename. Files will be added to the collections 'import' and 'camel' :
+For example, to read files from inbox and then run the flow "my-flow-name":
 ```
 <route>
      <from uri="file:inbox"/>
