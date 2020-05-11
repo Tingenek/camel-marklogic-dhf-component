@@ -1,6 +1,6 @@
-Camel MarkLogic Component
+Camel MarkLogic Data Hub Framework Component
 ==========================
-A component wrapping a small part of the MarkLogic DHF 5.x Java API
+A component wrapping the MarkLogic DHF 5.2 standalone client jar. Allows you to call a Flow and it'sStepsfrom Camel 
 Definitely a work in progress!
 
 2020 MLawson (@tingenek).
